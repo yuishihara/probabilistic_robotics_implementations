@@ -4,16 +4,21 @@ from drawable import Drawable
 
 
 class IdealCamera(Drawable):
-    def __init__(self, env_map):
+    def __init__(self, env_map,
+                 distance_range=(0.5, 6.0),
+                 direction_range=(-math.pi/3.0, math.pi/3.0)):
         self._map = env_map
         self._last_observations = []
         self._last_camera_pose = None
+        self._distance_range = distance_range
+        self._direction_range = direction_range
 
     def observe(self, camera_pose):
         result = []
         for landmark in self._map._landmarks:
-            p = self._observation_function(camera_pose, landmark._position)
-            result.append(p)
+            if self._is_visible(camera_pose, landmark):
+                p = self._observation_function(camera_pose, landmark._position)
+                result.append(p)
         self._last_observations = result
         self._last_camera_pose = camera_pose
         return result
@@ -29,6 +34,17 @@ class IdealCamera(Drawable):
             drawn_objects.extend(ax.plot([x, lx], [y, ly], color="pink"))
         return drawn_objects
 
+    def _is_visible(self, camera_pose, landmark):
+        if landmark is None:
+            return False
+        l, theta = self._relative_polar_position(
+            camera_pose, landmark._position)
+        l_min = self._distance_range[0]
+        l_max = self._distance_range[1]
+        theta_min = self._direction_range[0]
+        theta_max = self._direction_range[1]
+        return (l_min <= l <= l_max) and (theta_min <= theta <= theta_max)
+
     @classmethod
     def _fit_angle_in_range(cls, rad):
         while rad >= np.pi:
@@ -38,11 +54,17 @@ class IdealCamera(Drawable):
         return rad
 
     @classmethod
-    def _observation_function(cls, camera_pose, object_position):
+    def _relative_polar_position(cls, camera_pose, object_position):
         pose_diff = object_position - camera_pose[0:2]
         phi = math.atan2(pose_diff[1], pose_diff[0]) - camera_pose[2]
         phi = cls._fit_angle_in_range(phi)
-        return np.array([np.hypot(*pose_diff), phi]).T
+        l = np.hypot(*pose_diff)
+        return l, phi
+
+    @classmethod
+    def _observation_function(cls, camera_pose, object_position):
+        l, phi = cls._relative_polar_position(camera_pose, object_position)
+        return np.array([l, phi]).T
 
 
 if __name__ == "__main__":
