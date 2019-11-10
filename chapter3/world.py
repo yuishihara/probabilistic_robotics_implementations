@@ -31,9 +31,9 @@ class World(object):
         self._animation = anim.FuncAnimation(fig, self._step,
                                              fargs=(scene_objects, ax),
                                              frames=int(
-                                                 self._time_span/self._time_interval) + 1,
+                                                 self._time_span / self._time_interval) + 1,
                                              interval=int(
-                                                 self._time_interval*1000),
+                                                 self._time_interval * 100),
                                              repeat=False)
         plt.show()
 
