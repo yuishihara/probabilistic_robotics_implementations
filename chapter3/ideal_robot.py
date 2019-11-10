@@ -6,11 +6,12 @@ import numpy as np
 
 
 class IdealRobot(Drawable):
-    def __init__(self, initial_pose, color='black'):
+    def __init__(self, initial_pose, camera=None, color='black'):
         self._pose = initial_pose
         self._radius = 0.2
         self._color = color
         self._trajectory = [initial_pose]
+        self._camera = camera
 
     def draw(self, ax):
         x, y, theta = self._pose
@@ -31,12 +32,18 @@ class IdealRobot(Drawable):
             [pose[0] for pose in self._trajectory],
             [pose[1] for pose in self._trajectory],
             linewidth=0.5, color='black'))
+
+        # カメラのデータを描画
+        if self._camera is not None:
+            drawn_objects.extend(self._camera.draw(ax))
+
         return drawn_objects
 
     def one_step(self, ut, delta_t):
         vel, omega = ut
         self._pose = self.transition_function(vel, omega, delta_t, self._pose)
         self._trajectory.append(self._pose)
+        return self._camera.observe(self._pose) if self._camera else None
 
     @classmethod
     def transition_function(cls, vel, omega, delta_t, pose):
