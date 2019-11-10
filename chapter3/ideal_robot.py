@@ -10,6 +10,7 @@ class IdealRobot(Drawable):
         self._pose = initial_pose
         self._radius = 0.2
         self._color = color
+        self._trajectory = [initial_pose]
 
     def draw(self, ax):
         x, y, theta = self._pose
@@ -24,7 +25,18 @@ class IdealRobot(Drawable):
         robot = patches.Circle(
             xy=(x, y), radius=self._radius, fill=False, color=self._color)
         drawn_objects.append(ax.add_patch(robot))
+
+        # 軌跡を書く
+        drawn_objects.extend(ax.plot(
+            [pose[0] for pose in self._trajectory],
+            [pose[1] for pose in self._trajectory],
+            linewidth=0.5, color='black'))
         return drawn_objects
+
+    def one_step(self, ut, delta_t):
+        vel, omega = ut
+        self._pose = self.transition_function(vel, omega, delta_t, self._pose)
+        self._trajectory.append(self._pose)
 
     @classmethod
     def transition_function(cls, vel, omega, delta_t, pose):
