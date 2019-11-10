@@ -12,11 +12,14 @@ class RealCamera(Camera):
                  distance_range=(0.5, 6.0),
                  direction_range=(-math.pi / 3.0, math.pi / 3.0),
                  distance_noise_rate=0.1,
-                 direction_noise=math.pi / 90):
+                 direction_noise=math.pi / 90,
+                 distance_bias_rate_stddev=0.1, direction_bias_stddev=math.pi / 90):
         super(RealCamera, self).__init__(
             env_map, distance_range, direction_range)
         self._distance_noise_rate = distance_noise_rate
         self._direction_noise = direction_noise
+        self._distance_bias_rate = norm.rvs(scale=distance_bias_rate_stddev)
+        self._direction_bias = norm.rvs(scale=direction_bias_stddev)
 
     def observe(self, camera_pose):
         result = []
@@ -24,11 +27,18 @@ class RealCamera(Camera):
             if self._is_visible(camera_pose, landmark):
                 observation = self._observation_function(
                     camera_pose, landmark._position)
+                observation = self._add_bias(observation)
                 observation = self._add_noise(observation)
                 result.append(observation)
         self._last_observations = result
         self._last_camera_pose = camera_pose
         return result
+
+    def _add_bias(self, observation):
+        observed_l = observation[0]
+        bias = np.array(
+            [observed_l * self._distance_bias_rate, self._direction_bias]).T
+        return observation + bias
 
     def _add_noise(self, observation):
         observed_l = observation[0]
@@ -56,9 +66,9 @@ if __name__ == "__main__":
 
     camera = RealCamera(world_map)
     world = World(time_span=30, time_interval=0.1)
-    for _ in range(10):
+    for _ in range(1):
         robot = IdealRobot(
-            np.array([-2, -1, 0.0]).T, camera=RealCamera(world_map))
+            np.array([-2, -1, 0.0]).T, camera=RealCamera(world_map, distance_bias_rate_stddev=0.2))
         agent = FixedInputAgent(robot, vel=0.2, omega=10.0 / 180 * math.pi)
         world.append_agent(agent)
 
