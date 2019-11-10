@@ -16,7 +16,9 @@ class RealCamera(Camera):
                  distance_bias_rate_stddev=0.1, direction_bias_stddev=math.pi / 90,
                  phantom_probability=0.0,
                  phantom_range_x=(-5.0, 5.0),
-                 phantom_range_y=(-5.0, 5.0)):
+                 phantom_range_y=(-5.0, 5.0),
+                 oversight_probability=0.0,
+                 occlusion_probability=0.0):
         super(RealCamera, self).__init__(
             env_map, distance_range, direction_range)
         self._distance_noise_rate = distance_noise_rate
@@ -28,14 +30,19 @@ class RealCamera(Camera):
         phantom_y = phantom_range_y
         self._phantom_distribution = uniform(
             loc=(phantom_x[0], phantom_y[0]), scale=(phantom_x[1] - phantom_x[0], phantom_y[1] - phantom_y[0]))
+        self._oversight_probability = oversight_probability
+        self._occlusion_probability = occlusion_probability
 
     def observe(self, camera_pose):
         result = []
         for landmark in self._map._landmarks:
+            if self._oversight_occured():
+                continue
             if self._is_visible(camera_pose, landmark):
                 observation = self._observation_function(
                     camera_pose, landmark._position)
                 observation = self._simulate_phantom(camera_pose, observation)
+                observation = self._simulate_occlusion(observation)
                 observation = self._add_bias(observation)
                 observation = self._add_noise(observation)
                 result.append(observation)
@@ -52,8 +59,8 @@ class RealCamera(Camera):
     def _add_noise(self, observation):
         observed_l = observation[0]
         observed_phi = observation[1]
-        l = norm.rvs(loc=observed_l, scale=observed_l *
-                     self._distance_noise_rate)
+        l = norm.rvs(loc=observed_l, scale=observed_l
+                     * self._distance_noise_rate)
         phi = norm.rvs(loc=observed_phi, scale=self._direction_noise)
         return np.array([l, phi]).T
 
@@ -63,6 +70,18 @@ class RealCamera(Camera):
             return self._observation_function(camera_pose, phantom_position)
         else:
             return observation
+
+    def _simulate_occlusion(self, observation):
+        if uniform.rvs() < self._occlusion_probability:
+            observation_l = observation[0]
+            occluded_l = observation_l + \
+                uniform.rvs() * (self._distance_range[1] - observation_l)
+            return np.array([occluded_l, observation[1]]).T
+        else:
+            return observation
+
+    def _oversight_occured(self):
+        return uniform.rvs() < self._oversight_probability
 
 
 if __name__ == "__main__":
@@ -84,7 +103,9 @@ if __name__ == "__main__":
     world = World(time_span=30, time_interval=0.1)
     for _ in range(1):
         robot = IdealRobot(
-            np.array([-2, -1, 0.0]).T, camera=RealCamera(world_map, distance_bias_rate_stddev=0.2, phantom_probability=0.1))
+            np.array([-2, -1, 0.0]).T, camera=RealCamera(world_map, distance_bias_rate_stddev=0.2,
+                                                         phantom_probability=0.0, oversight_probability=0.0,
+                                                         occlusion_probability=1.0))
         agent = FixedInputAgent(robot, vel=0.2, omega=10.0 / 180 * math.pi)
         world.append_agent(agent)
 
