@@ -6,7 +6,7 @@ sys.path.append("chapter4")
 
 from drawable import Drawable
 
-class MonteCarloLocalization():
+class MonteCarloLocalization(Drawable):
     def __init__(self, init_pose, particle_num):
         self._particles = [Particle(init_pose) for i in range(particle_num)]
 
