@@ -14,6 +14,7 @@ class EstimationAgent(Agent):
     def act(self, delta_t):
         ut = (self._vel, self._omega)
         self._robot.one_step(ut, delta_t)
+        self._localizer.motion_update(ut[0], ut[1], delta_t)
 
     def draw(self, ax):
         drawn_objects = []
@@ -43,9 +44,12 @@ if __name__ == "__main__":
     world_map.append_landmark(landmark3)
 
     world = World(time_span=30, time_interval=0.1)
-    init_pose = np.array([-2, -1, math.pi * 5 / 6]).T
+    init_pose = np.array([0.0, 0.0, 0.0]).T
     robot = RealRobot(init_pose, camera=IdealCamera(world_map))
-    mcl = MonteCarloLocalization(init_pose, 100)
+
+    particle_num = 100
+    stds = {"nn": 0.01, "no": 0.02, "on": 0.03, "oo": 0.04}
+    mcl = MonteCarloLocalization(init_pose, particle_num, motion_noise_stds=stds)
     agent = EstimationAgent(robot, vel=0.2, omega=10.0 /
                             180 * math.pi, localizer=mcl)
     world.append_agent(agent)
