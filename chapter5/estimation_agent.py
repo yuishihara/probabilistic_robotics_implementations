@@ -19,7 +19,6 @@ class EstimationAgent(Agent):
     def draw(self, ax):
         drawn_objects = []
         drawn_objects.extend(super().draw(ax))
-        drawn_objects.append(ax.text(0, 0, "hoge", fontsize=10))
         drawn_objects.extend(self._localizer.draw(ax))
         return drawn_objects
 
